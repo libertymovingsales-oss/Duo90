@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Duo90 — Derek & Kimaada</title>
+<meta name="theme-color" content="#1473e6"/>
+<link rel="manifest" href='data:application/manifest+json,{"name":"Duo90","short_name":"Duo90","start_url":"./index.html","display":"standalone","background_color":"#0b1220","theme_color":"#1473e6","icons":[{"src":"https://placehold.co/192x192/png?text=D90","sizes":"192x192","type":"image/png"}]}'>
+<style>
+:root{--bg:#0b1220;--card:#101a33;--accent:#1473e6;--muted:#8ea6c9;--text:#eaf2ff}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:16px} header{position:sticky;top:0;background:#0e1833cc;border-bottom:1px solid #1d2a4d}
+h1{font-size:20px;margin:8px 0} .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 2px}
+.tabs button{background:transparent;color:var(--muted);border:1px solid #1e2b50;padding:8px 12px;border-radius:999px}
+.tabs button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.grid{display:grid;gap:12px}.two{grid-template-columns:1fr}@media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+.card{background:var(--card);border:1px solid #1d2a4d;border-radius:14px;padding:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+input,textarea{width:100%;padding:10px;background:#0f1830;color:#eaf2ff;border:1px solid #283a6d;border-radius:12px}
+.btn{border:0;background:var(--accent);color:#fff;padding:10px 12px;border-radius:12px;font-weight:600}
+.small{font-size:12px;color:var(--muted)} .tag{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid #2a3d72;color:#cfe1ff}
+label.l{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
+.checklist label{display:flex;gap:10px;align-items:center;margin:6px 0;padding:8px;border:1px solid #223466;border-radius:12px}
+</style>
+</head>
+<body>
+<header class="wrap">
+  <h1>💙 Duo90 — Derek & Heaven’s Reflection</h1>
+  <div class="tabs">
+    <button class="active" data-tab="dash">Dashboard</button>
+    <button data-tab="weeks">Weeks</button>
+    <button data-tab="about">About</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- DASH -->
+  <section id="dash" class="tab">
+    <div class="grid two">
+      <div class="card">
+        <h3>Today — Heaven’s Reflection</h3>
+        <div id="her-list" class="checklist"></div>
+        <label class="l">Notes<textarea id="her-notes" placeholder="How did you feel?"></textarea></label>
+      </div>
+      <div class="card">
+        <h3>Today — Derek</h3>
+        <div id="his-list" class="checklist"></div>
+        <label class="l">Notes<textarea id="his-notes" placeholder="Energy, focus, wins..."></textarea></label>
+      </div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="row">
+        <label class="l">Start Date<input id="start-date" type="date"/></label>
+        <label class="l">Day # (1–90)<input id="day-num" type="number" min="1" max="90"/></label>
+        <button id="jump" class="btn">Jump to Today</button>
+      </div>
+      <div class="small">Set your 90-day start; it will auto-pick today.</div>
+    </div>
+  </section>
+
+  <!-- WEEKS -->
+  <section id="weeks" class="tab" style="display:none">
+    <div class="card">
+      <div class="row">
+        <div id="weeknav" class="row"></div>
+        <button id="apply-w1" class="btn">Week-1 Template</button>
+      </div>
+    </div>
+    <div id="week-grid" class="grid two" style="margin-top:10px"></div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="about" class="tab" style="display:none">
+    <div class="card">
+      <h3>About</h3>
+      <p>Private, offline-friendly 90-day planner for two (local storage). Install to Home Screen after publishing GitHub Pages.</p>
+      <p class="small">Photos/advanced metrics can be added later — this minimal version gets you deployed fast.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+// tabs
+$$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.remove('active'));$$('main .tab').forEach(t=>t.style.display='none');b.classList.add('active');document.getElementById(b.dataset.tab).style.display='block'; if(b.dataset.tab==='weeks') drawWeek();});
+// state
+const empty=()=>({her:{tasks:[],done:{},notes:""},his:{tasks:[],done:{},notes:""}});
+let st=load(); function load(){try{const r=localStorage.getItem('duo90');return r?JSON.parse(r):{start:null,days:Array.from({length:90},empty())};}catch{return{start:null,days:Array.from({length:90},empty())}}}
+const save=()=>localStorage.setItem('duo90',JSON.stringify(st));
+const iso=()=>new Date().toISOString().slice(0,10);
+const idxFrom=(d)=>{ if(!st.start) return 0; const a=new Date(st.start+"T00:00:00"), b=new Date(d+"T00:00:00"); return Math.min(89, Math.max(0, Math.floor((b-a)/86400000))); };
+const dateFrom=(i)=>{ if(!st.start){const t=new Date();t.setHours(0,0,0,0);return t.toISOString().slice(0,10);} const a=new Date(st.start+"T00:00:00"); const d=new Date(a.getTime()+i*86400000); return d.toISOString().slice(0,10); };
+let active=st.start?idxFrom(iso()):0;
+// dash
+const herList=$("#her-list"), hisList=$("#his-list"), herN=$("#her-notes"), hisN=$("#his-notes"), start=$("#start-date"), day=$("#day-num");
+function renderDash(){
+  day.value=active+1; start.value=st.start||"";
+  const d=st.days[active];
+  const draw=(root,role)=>{
+    root.innerHTML=""; const e=d[role];
+    if(e.tasks.length===0){ e.tasks = role==='her'?["30m walking","20m belly dance","Evening stretch & journal"]:["20m walk","Light weights (upper)","Evening breathwork"]; e.done={}; save(); }
+    e.tasks.forEach((t,i)=>{const L=document.createElement('label');L.innerHTML=`<input type="checkbox"> <span>${t}</span>`; const cb=L.querySelector('input'); cb.checked=!!e.done[i]; cb.onchange=()=>{e.done[i]=cb.checked; save();}; root.appendChild(L);});
+    const row=document.createElement('div'); row.className='row'; row.innerHTML=`<input id="${role}-add" placeholder="Add a task"><button class="btn">+</button><button class="btn" style="background:#2a3d72">Clear</button>`;
+    const inp=row.querySelector('input'), add=row.querySelectorAll('button')[0], clr=row.querySelectorAll('button')[1];
+    add.onclick=()=>{if(!inp.value.trim())return; e.tasks.push(inp.value.trim()); e.done={}; inp.value=""; save(); renderDash();};
+    clr.onclick=()=>{e.done={}; save(); renderDash();};
+    root.appendChild(row);
+  };
+  draw(herList,'her'); draw(hisList,'his');
+  herN.value=d.her.notes||""; hisN.value=d.his.notes||"";
+}
+herN.oninput=()=>{st.days[active].her.notes=herN.value; save();};
+hisN.oninput=()=>{st.days[active].his.notes=hisN.value; save();};
+$("#jump").onclick=()=>{active=st.start?idxFrom(iso()):0; renderDash();};
+start.onchange=()=>{st.start=start.value||null; save();};
+day.onchange=()=>{const v=Math.min(90,Math.max(1,Number(day.value||1))); active=v-1; renderDash();};
+// weeks
+function drawWeek(){
+  const nav=$("#weeknav"), grid=$("#week-grid"); nav.innerHTML=""; grid.innerHTML="";
+  const wNow=Math.floor(active/7);
+  for(let w=0; w<13; w++){ const b=document.createElement('button'); b.textContent=`Week ${w+1}`; if(w===wNow)b.classList.add('active'); b.onclick=()=>show(w); nav.appendChild(b); }
+  function show(w){ grid.innerHTML=""; for(let d=0; d<7; d++){ const i=w*7+d; if(i>89) break; const day=st.days[i], dt=dateFrom(i);
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="row" style="justify-content:space-between"><b>Day ${i+1}</b><span class="tag">${dt}</span></div>
+    <div class="row"><input data-r="her" data-i="${i}" placeholder="Her tasks (comma separated)" value="${(day.her.tasks||[]).join(', ')}"></div>
+    <div class="row"><input data-r="his" data-i="${i}" placeholder="His tasks (comma separated)" value="${(day.his.tasks||[]).join(', ')}"></div>`;
+    grid.appendChild(card);
+  }
+  grid.querySelectorAll('input').forEach(inp=>inp.onchange=()=>{const i=+inp.dataset.i,r=inp.dataset.r; st.days[i][r].tasks=inp.value.split(',').map(s=>s.trim()).filter(Boolean); st.days[i][r].done={}; save(); if(i===active) renderDash();});}
+  show(wNow);
+}
+$("#apply-w1").onclick=()=>{const wk=[
+  {her:["30m walking","20m belly dance","Evening stretch & journal"], his:["15m vibration plate","20m walk","Light weights (upper)"]},
+  {her:["15m Pilates","15m trampoline","10m side stretch"], his:["20m walk","Pushups x3 sets","Light dumbbells"]},
+  {her:["30m bachata","20m belly dance","Gratitude journal"], his:["20m walk","20m vibration plate","Core circuit"]},
+  {her:["30m walking","15m Pilates core","Scripture/affirmation"], his:["25m walk","Weights (legs)","Evening stretch"]},
+  {her:["40m belly dance/flow","Skincare ritual"], his:["20m walk","Full-body light weights","Progress notes"]},
+  {her:["30–40m outdoor walk","Light Pilates","Spa-style self-care"], his:["30m cardio","Bodyweight squats","Foam roll"]},
+  {her:["Rest/gentle walk","Photos + measurements"], his:["Rest/light walk","Photos + measurements"]}
+]; for(let d=0; d<7; d++){ st.days[d].her.tasks=wk[d].her; st.days[d].his.tasks=wk[d].his; st.days[d].her.done={}; st.days[d].his.done={}; } save(); drawWeek(); renderDash(); alert("Week-1 loaded.");};
+// init
+function init(){ renderDash(); if('serviceWorker' in navigator){ navigator.serviceWorker.register('./sw.js').catch(()=>{}); } }
+init();
+</script>
+</body>
+</html>
